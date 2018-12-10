@@ -6,8 +6,8 @@ from os import listdir
 import numpy as np
 
 
-MaxIteraciones=1000	#número de iteraciones
-Particulas=2		#numero de partículas
+MaxIteraciones=100	#número de iteraciones
+Particulas=10		#numero de partículas
 a=1					#parámetro a
 b=1					#parámetro b
 c=1					#parámetro c
@@ -32,7 +32,7 @@ class problema(object):
 		TXT_SEP='='
 		archivo = open(PATH_SOURCE, "r")
 		Matrix=[]
-		matriz = 'F'
+		matriz = False
 		for linea in archivo.readlines():
 			if linea.split(TXT_SEP)[0]=="Machines":
 				Machines = int(linea.split(TXT_SEP)[1])
@@ -44,10 +44,10 @@ class problema(object):
 				Mmax = int(linea.split(TXT_SEP)[1])
 			if linea.split(TXT_SEP)[0]=="Best Solution":
 				Bsol = int(linea.split(TXT_SEP)[1])
-			if matriz == 'T':
+			if matriz == True:
 				Matrix.append((linea.strip(' \\\n\r').split(' ')))	
 			if linea.split(TXT_SEP)[0]=="Matrix":
-				matriz = 'T'
+				matriz = True
 		return Matrix,Machines,Parts,Cells,Mmax,Bsol
 
 
@@ -56,10 +56,10 @@ class soluciones(object):
 	def __init__(self, arg):
 		super(soluciones, self).__init__()
 		self.instancia = arg
-		self.Y=[]
-		self.Z=[]
-		self.S=[]
-		for p in range (Particulas):
+		self.Y=[] #maquina 
+		self.Z=[] #parte
+		self.S=[] #solucion/fitness
+		for p in range (Particulas): #llenar las 3 matrices
 			y,z,s = self.trabajo()
 			self.Y.append(y)
 			self.Z.append(z)
@@ -69,38 +69,38 @@ class soluciones(object):
 
 	def trabajo(self):
 		A=self.instancia.Matrix
-		restriccion='F'
-		while restriccion=='F':	
+		restriccion=False
+		while restriccion==False:	
 			Yuniforme=np.random.uniform(size=self.instancia.Machines)
 			Zuniforme=np.random.uniform(size=self.instancia.Parts)
 			Y=self.transformar(Yuniforme)
 			Z=self.transformar(Zuniforme)
 			restriccion=self.probar_restriccion(Y)
-		Solucion=self.solucion(A,Y,Z)
-		return Yuniforme,Zuniforme,Solucion	
+		Solucion=self.solucion(A,Y,Z) #resultado FO , fitness
+		return Yuniforme,Zuniforme,Solucion	#devuelve las 3 matrices 
 
 	def transformar(self,matriz):  #funcion que transforma de numeros uniforme a binarios
 
 		Cells=self.instancia.Cells
-		print(Cells)
-		arreglo_discreta=np.zeros((len(matriz),Cells))
+		#print(Cells)
+		arreglo_discreta=np.zeros((len(matriz),Cells)) #llenar matriz de MXP
 
 		# j = (Cells*matriz).astype(int)
 
-		for i in range(len(matriz)):
+		for i in range(len(matriz)): #multiplicar fila x columna para ver que tenga un 1
 			j=int(matriz[i]*Cells)
 			arreglo_discreta[i][j]=1
 		return arreglo_discreta
 
 	def probar_restriccion(self,Y):  #probar que no exeda la suma de máquinas permitidas
-		valido='T'
+		valido=True
 		suma=0			
 		for k in range(self.instancia.Cells): 
 			suma=0
 			for i in range(self.instancia.Machines):	
 				suma=suma + Y[i][k]
 			if suma>self.instancia.Mmax:
-				valido='F'
+				valido=False
 		return valido	
 
 	def solucion(self,A,Y,Z):     #mostrar solucion
@@ -123,12 +123,12 @@ class metaehuristia(object):
 		self.instancia = instancia 	#instancia obtenida del txt
 		self.solucion = solucion 	#solucion/es inicales para particulas
 		self.v = self.generarV()	#generar aleatoriamente v
-		p=solucion.S.index(min(self.solucion.S))
+		p=solucion.S.index(min(self.solucion.S)) # conseguir indice , puntero sol
 		self.Xbest=np.array((np.copy(self.solucion.Y[p]),np.copy(self.solucion.Z[p]),np.copy(self.solucion.S[p])))	#mejor solucion del grupo actual hay q copiar
 		self.Xglobal=np.copy(self.Xbest)				#mejor solucion global 															
 		self.algoritmo()
 		
-	def generarV(self):
+	def generarV(self): #generar velocidad una matriz del mismo tamaño q la mxp
 		obj=[]
 		for i in range (Particulas):
 			obj.append(np.array((np.random.random(self.instancia.Machines),np.random.random(self.instancia.Parts))))
@@ -137,7 +137,7 @@ class metaehuristia(object):
 
 
 	def algoritmo(self):
-		it=0
+		print("mejor solucion",self.Xbest[2])
 		for p in range (Particulas):
 			paso=False
 			while paso==False:	
@@ -149,33 +149,45 @@ class metaehuristia(object):
 					self.solucion.Z[p][j]=self.poscicion(self.solucion.Z[p][j],self.v[p][1][j],1)
 				SigmY=self.sigmoide(self.solucion.Y[p])
 				Y=self.solucion.transformar(SigmY)
-				#if self.solucion.probar_restriccion(Y) == True:
-				#	paso=True
-				#	SigmZ=self.sigmoide(self.solucion.Z[p])
-				#	self.solucion.transformar(SigmY) #primero aplicar sigmoide
-				#	self.solucion.transformar(SigmY)
-				
-
-				
-				
-				#solucion.transforma(self.solucion.Z[p]) #primero aplicar sigmoide
-				#solucion.probar_restriccion(resultante de xy)
-
+				if self.solucion.probar_restriccion(Y) == True:
+					paso=True
+					SigmZ=self.sigmoide(self.solucion.Z[p])
+					Z=self.solucion.transformar(SigmZ)
+					self.solucion.S[p]=self.solucion.solucion(self.instancia.Matrix,Y,Z)
+		
 		self.desviacionStandar(self.solucion.Y,self.solucion.Z)
 		
-		#while it < MaxIteraciones and self.instancia.Bsol<Csol:
-			#for n in range (Particulas):
-				# pocicion(1,n)
-				# velocidad(n)
+		iteracion=1
 
 
-			#self.solucion.Y=self.poscicion(1)
-			#hacer algoritmo con x e v, luego la desviacion std y la wea
+		while iteracion < MaxIteraciones and self.instancia.Bsol<self.Xglobal[2]:
+			print("iteracion",iteracion)
+			for p in range (Particulas):
+				paso=False
+				while paso==False:	
+					for i in range(self.instancia.Machines):
+						self.v[p][0][i]=self.velocidad(self.Xbest[0][i],self.Xglobal[0][i],self.v[p][0][i],self.solucion.Y[p][i]) #xbest cambia cuando pasa por y[i]
+						self.solucion.Y[p][i]=self.poscicion(self.solucion.Y[p][i],self.v[p][0][i],1)
+					for j in range(self.instancia.Parts):
+						self.v[p][1][j]=self.velocidad(self.Xbest[1][j],self.Xglobal[1][j],self.v[p][1][j],self.solucion.Z[p][j])
+						self.solucion.Z[p][j]=self.poscicion(self.solucion.Z[p][j],self.v[p][1][j],1)
+					SigmY=self.sigmoide(self.solucion.Y[p])
+					Y=self.solucion.transformar(SigmY)
+					if self.solucion.probar_restriccion(Y) == True:
+						paso=True
+						SigmZ=self.sigmoide(self.solucion.Z[p])
+						Z=self.solucion.transformar(SigmZ)
+						self.solucion.S[p]=self.solucion.solucion(self.instancia.Matrix,Y,Z)			
+
+
 		#	if i%10==0:
 		#		print("mantencion")
 		#		self.desviacion(self.solucion.Y,self.solucion.Z)
 				#hacer mantencion
 		#	Csol+=1
+			print(min(self.solucion.S))
+			iteracion+=1
+		exit()
 
 
 
