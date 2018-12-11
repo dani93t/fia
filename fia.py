@@ -7,7 +7,7 @@ import numpy as np
 
 
 MaxIteraciones=100	#número de iteraciones
-Particulas=10		#numero de partículas
+Particulas=2		#numero de partículas
 a=1					#parámetro a
 b=1					#parámetro b
 c=1					#parámetro c
@@ -80,9 +80,7 @@ class soluciones(object):
 		return Yuniforme,Zuniforme,Solucion	#devuelve las 3 matrices 
 
 	def transformar(self,matriz):  #funcion que transforma de numeros uniforme a binarios
-
 		Cells=self.instancia.Cells
-		#print(Cells)
 		arreglo_discreta=np.zeros((len(matriz),Cells)) #llenar matriz de MXP
 
 		# j = (Cells*matriz).astype(int)
@@ -124,8 +122,8 @@ class metaehuristia(object):
 		self.solucion = solucion 	#solucion/es inicales para particulas
 		self.v = self.generarV()	#generar aleatoriamente v
 		p=solucion.S.index(min(self.solucion.S)) # conseguir indice , puntero sol
-		self.Xbest=np.array((np.copy(self.solucion.Y[p]),np.copy(self.solucion.Z[p]),np.copy(self.solucion.S[p])))	#mejor solucion del grupo actual hay q copiar
-		self.Xglobal=np.copy(self.Xbest)				#mejor solucion global 															
+		self.Xbest=np.array((np.copy(self.solucion.Y[p]),np.copy(self.solucion.Z[p]),np.copy(self.solucion.S[p])))					#mejor solucion del grupo actual hay q copiar
+		self.Xglobal=np.array((np.copy(self.solucion.Y[p]),np.copy(self.solucion.Z[p]),np.copy(self.solucion.S[p])))				#mejor solucion global 															
 		self.algoritmo()
 		
 	def generarV(self): #generar velocidad una matriz del mismo tamaño q la mxp
@@ -137,26 +135,44 @@ class metaehuristia(object):
 
 
 	def algoritmo(self):
-		print("mejor solucion",self.Xbest[2])
+		print("mejor solucion actual", min(self.solucion.S))
 		for p in range (Particulas):
 			paso=False
-			while paso==False:	
-				for i in range(self.instancia.Machines):
-					self.v[p][0][i]=self.velocidad(self.Xbest[0][i],self.Xglobal[0][i],self.v[p][0][i],self.solucion.Y[p][i]) #xbest cambia cuando pasa por y[i]
-					self.solucion.Y[p][i]=self.poscicion(self.solucion.Y[p][i],self.v[p][0][i],1)
-				for j in range(self.instancia.Parts):
-					self.v[p][1][j]=self.velocidad(self.Xbest[1][j],self.Xglobal[1][j],self.v[p][1][j],self.solucion.Z[p][j])
-					self.solucion.Z[p][j]=self.poscicion(self.solucion.Z[p][j],self.v[p][1][j],1)
-				SigmY=self.sigmoide(self.solucion.Y[p])
+			while paso==False:
+				aux1=self.velocidad(self.Xbest[0],self.Xglobal[0],self.v[p][0],self.solucion.Y[p]) #guarda en variable temporal
+				aux2=self.poscicion(self.solucion.Y[p],aux1,1)									   #guarda en variable temporal
+				SigmY=self.sigmoide(aux2)
 				Y=self.solucion.transformar(SigmY)
 				if self.solucion.probar_restriccion(Y) == True:
+					self.v[p][0]=aux1
+					self.solucion.Y[p]=aux2
 					paso=True
+					self.v[p][1]=self.velocidad(self.Xbest[1],self.Xglobal[1],self.v[p][1],self.solucion.Z[p])
+					self.solucion.Z[p]=self.poscicion(self.solucion.Z[p],self.v[p][1],1)
 					SigmZ=self.sigmoide(self.solucion.Z[p])
 					Z=self.solucion.transformar(SigmZ)
 					self.solucion.S[p]=self.solucion.solucion(self.instancia.Matrix,Y,Z)
-		
+		print("fin")
+		print("mejor solucion nueva", min(self.solucion.S))
 		self.desviacionStandar(self.solucion.Y,self.solucion.Z)
 		
+		print(self.Xbest,"\n\n")
+		print(self.Xglobal,"\n\n")
+
+		p=self.solucion.S.index(min(self.solucion.S))
+		self.Xbest = (np.copy(self.solucion.Y[p]),np.copy(self.solucion.Z[p]),np.copy(self.solucion.S[p]))
+		
+
+		print(self.Xbest,"\n\n")
+		print(self.Xglobal,"\n\n")
+
+		if self.Xbest[2] < self.Xglobal[2]:
+			self.Xglobal = (np.copy(self.solucion.Y[p]),np.copy(self.solucion.Z[p]),np.copy(self.solucion.S[p]))
+		
+		print(self.Xbest,"\n\n")
+		print(self.Xglobal,"\n\n")
+
+		exit()
 		iteracion=1
 
 
@@ -164,20 +180,20 @@ class metaehuristia(object):
 			print("iteracion",iteracion)
 			for p in range (Particulas):
 				paso=False
-				while paso==False:	
-					for i in range(self.instancia.Machines):
-						self.v[p][0][i]=self.velocidad(self.Xbest[0][i],self.Xglobal[0][i],self.v[p][0][i],self.solucion.Y[p][i]) #xbest cambia cuando pasa por y[i]
-						self.solucion.Y[p][i]=self.poscicion(self.solucion.Y[p][i],self.v[p][0][i],1)
-					for j in range(self.instancia.Parts):
-						self.v[p][1][j]=self.velocidad(self.Xbest[1][j],self.Xglobal[1][j],self.v[p][1][j],self.solucion.Z[p][j])
-						self.solucion.Z[p][j]=self.poscicion(self.solucion.Z[p][j],self.v[p][1][j],1)
-					SigmY=self.sigmoide(self.solucion.Y[p])
+				while paso==False:
+					aux1=self.velocidad(self.Xbest[0],self.Xglobal[0],self.v[p][0],self.solucion.Y[p])
+					aux2=self.poscicion(self.solucion.Y[p],aux1,1)
+					SigmY=self.sigmoide(aux2)
 					Y=self.solucion.transformar(SigmY)
 					if self.solucion.probar_restriccion(Y) == True:
+						self.v[p][0]=aux1
+						self.solucion.Y[p]=aux2
 						paso=True
+						self.v[p][1]=self.velocidad(self.Xbest[1],self.Xglobal[1],self.v[p][1],self.solucion.Z[p])
+						self.solucion.Z[p]=self.poscicion(self.solucion.Z[p],self.v[p][1],1)
 						SigmZ=self.sigmoide(self.solucion.Z[p])
 						Z=self.solucion.transformar(SigmZ)
-						self.solucion.S[p]=self.solucion.solucion(self.instancia.Matrix,Y,Z)			
+						self.solucion.S[p]=self.solucion.solucion(self.instancia.Matrix,Y,Z)
 
 
 		#	if i%10==0:
@@ -192,10 +208,10 @@ class metaehuristia(object):
 
 
 	def velocidad(self,Xbest,Xglobal,v,x):
-		return a*v+b*np.random.random()*(Xbest-x) + c*np.random.random()*(Xglobal-x)
+		return a*v+b*np.random.random(len(v))*(Xbest-x) + c*np.random.random(len(v))*(Xglobal-x)
 
 	def poscicion(self,x,v1,mult):
-		r3=np.random.randint(-1,2) #entrega -1 0 1
+		r3=np.random.randint(-1,2,len(x)) #entrega -1 0 1
 		return x + mult*r3*self.phi + v1
 
 
