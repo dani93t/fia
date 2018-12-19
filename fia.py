@@ -8,14 +8,15 @@ import numpy as np
 
 MaxIteraciones=100	#número de iteraciones
 Particulas=100		#numero de partículas
-a=1				#parámetro a
+a=1			#parámetro a
 b=1					#parámetro b
 c=1					#parámetro c
 theta=0				#parámetro theta
 seed=-1				#parámetro semilla
-k=1
+k=0.333
 solucionOptima=0
 
+print(k)
 if seed>=0:  	#si semilla es positivo, tomara este valor como semilla
 	np.random.seed(seed)
 
@@ -64,7 +65,6 @@ class soluciones(object):	#clase donde guarda la solucion
 			self.Y.append(y)
 			self.Z.append(z)
 			self.S.append(s)
-
 
 	def trabajo(self): # método donde genera las matrices MxC y PxC aleatorias para generar solucion
 		A=self.instancia.Matrix
@@ -237,7 +237,8 @@ class metaehuristia(object):   #clase donde realiza las tareas de la metaehurist
 					estado=False
 					intentos=0
 					auxX=np.zeros(self.instancia.Machines)
-					while estado==False: 
+					while estado==False:
+						intentos+=1 
 						aux1=self.velocidad(self.Xbest[0][listaYt],self.Xglobal[0][listaYt],self.v[p][listaYt],self.solucion.Y[p][listaYt])  #mismo trabajo que en la iteraciones, pero con diferente trato segun la condicion de las desviaciones estandar
 						aux2=self.poscicion(self.solucion.Y[p][listaYt],self.v[p][listaYt],np.random.randint(2,6,len(listaYt)))
 						aux3=self.velocidad(self.Xbest[0][listaYf],self.Xglobal[0][listaYf],self.v[p][listaYf],self.solucion.Y[p][listaYf])
@@ -248,6 +249,7 @@ class metaehuristia(object):   #clase donde realiza las tareas de la metaehurist
 						if intentos>10 and self.solucion.probar_restriccion(Y) == False:
 							theta=np.linspace(0,2*np.pi,rangoTheta)
 							for t in range(rangoTheta):
+								#print(self.solucion.transformar(self.sigmoide(auxX+np.sin(theta[t]))))
 								if self.solucion.probar_restriccion(self.solucion.transformar(self.sigmoide(auxX+np.sin(theta[t])))) == True:
 									auxX=self.sigmoide(auxX+np.sin(theta[t]))
 									Y=self.solucion.transformar(auxX)
@@ -258,8 +260,7 @@ class metaehuristia(object):   #clase donde realiza las tareas de la metaehurist
 							self.solucion.Y[p]=auxX
 							self.v[p][listaYt]=aux1
 							self.v[p][listaYf]=aux3
-				desv1=desv2
-				#ver si trabaja Z	
+				desv1=desv2	
 			print("mejor local: ",self.Xbest[1],"\t mejor global: ",self.Xglobal[1])
 			#if (self.Xbest[2]==self.instancia.Bsol):
 			#	global solucionOptima 
@@ -295,7 +296,7 @@ class metaehuristia(object):   #clase donde realiza las tareas de la metaehurist
 def main():
 	instancias=listdir("BoctorProblem_90_instancias/")
 	for i in range(len(instancias)):
-		instancia = Instancia(instancias[i])	#crear instancia a partir del archivo
+		instancia = Instancia("MCDP_Boctor_Problem01_C3_M6.txt")	#crear instancia a partir del archivo
 		objetos=soluciones(instancia)			#generar soluciones en base de la instancia
 		metaehuristia(instancia,objetos) 	#en metaehuristica pasar cuadro y las soluciones
 		
