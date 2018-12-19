@@ -7,32 +7,27 @@ import numpy as np
 
 
 MaxIteraciones=100	#número de iteraciones
-Particulas=10		#numero de partículas
-a=1					#parámetro a
+Particulas=100		#numero de partículas
+a=1				#parámetro a
 b=1					#parámetro b
 c=1					#parámetro c
 theta=0				#parámetro theta
-seed=0				#parámetro semilla
+seed=-1				#parámetro semilla
 k=1
-
+solucionOptima=0
 
 if seed>=0:  	#si semilla es positivo, tomara este valor como semilla
 	np.random.seed(seed)
 
 
-log=open("log.txt","w")
-log.write(str(("\ta: ",a,"\tb: ",b,"\tc: ",c)))
-log.close()
-log=open("log.txt","a")
 
-class problema(object):
-	"""docstring for problema"""
+class Instancia(object):
+	"""docstring for Instancia"""
 	def __init__(self, arg):
-		super(problema, self).__init__()
+		super(Instancia, self).__init__()
 		self.arg = "BoctorProblem_90_instancias/"+arg
 		self.Matrix,self.Machines,self.Parts,self.Cells,self.Mmax,self.Bsol = self.cargar_matriz(self.arg)
-		log.write(str(("Máquinas: ",self.Machines ,"\t Partes: ",self.Parts,"\t Celdas: ", self.Cells ,"\t Máximo Máquinas: ",self.Mmax,"\t Mejor solucion: ", self.Bsol,"\t\n")))
-		print ("Máquinas: ",self.Machines ,"\t Partes: ",self.Parts,"\t Celdas: ", self.Cells ,"\t Máximo Máquinas: ",self.Mmax,"\t Mejor solucion: ", self.Bsol,"\t\n") #mostrar informacion de la instancia
+		print ("Máquinas: ",self.Machines ,"\t Partes: ",self.Parts,"\t Celdas: ", self.Cells ,"\t Máximo Máquinas: ",self.Mmax,"\t Mejor solucion: ", self.Bsol,"\t") #mostrar informacion de la instancia
 
 	def cargar_matriz(self,PATH_SOURCE):
 		TXT_SEP='='
@@ -54,7 +49,7 @@ class problema(object):
 				Matrix.append((linea.strip(' \\\n\r').split(' ')))	
 			if linea.split(TXT_SEP)[0]=="Matrix":
 				matriz = True
-		return Matrix,Machines,Parts,Cells,Mmax,Bsol
+		return np.array(Matrix, dtype='int8'),Machines,Parts,Cells,Mmax,Bsol
 
 
 class soluciones(object):	#clase donde guarda la solucion
@@ -71,7 +66,6 @@ class soluciones(object):	#clase donde guarda la solucion
 			self.S.append(s)
 
 
-
 	def trabajo(self): # método donde genera las matrices MxC y PxC aleatorias para generar solucion
 		A=self.instancia.Matrix
 		restriccion=False
@@ -79,17 +73,15 @@ class soluciones(object):	#clase donde guarda la solucion
 			Yuniforme=np.random.uniform(size=self.instancia.Machines) #inicializa las variables de manera uniforme
 			Zuniforme=np.random.uniform(size=self.instancia.Parts) #inicializa las variables de manera uniforme
 			Y=self.transformar(Yuniforme) 	# Trasnforma las matrices de continua a discreta segun las celdas
-			Z=self.transformar(Zuniforme)	# Trasnforma las matrices de continua a discreta segun las celdas
+			Z=self.crearZ(A,Y)	# Trasnforma las matrices de continua a discreta segun las celdas
 			restriccion=self.probar_restriccion(Y) # llama a verificar factibilidad de la funcion
 		Solucion=self.solucion(A,Y,Z) #resultado FO , fitness
-		return Yuniforme,Zuniforme,Solucion	#devuelve las 3 matrices 
+		return Yuniforme,Z,Solucion	#devuelve las 3 matrices 
 
 	def transformar(self,matriz):  #funcion que transforma de numeros uniforme a binarios
 		Cells=self.instancia.Cells
-		arreglo_discreta=np.zeros((len(matriz),Cells)) #llenar matriz de MXP
-
+		arreglo_discreta=np.zeros((len(matriz),Cells),dtype='int8') #llenar matriz de MXP
 		# j = (Cells*matriz).astype(int)
-
 		for i in range(len(matriz)): #multiplicar fila x columna para ver que tenga un 1
 			j=int(matriz[i]*Cells)
 			arreglo_discreta[i][j]=1
@@ -97,12 +89,8 @@ class soluciones(object):	#clase donde guarda la solucion
 
 	def probar_restriccion(self,Y):  #verificar factibilidad de problema
 		valido=True
-		suma=0			
 		for k in range(self.instancia.Cells): #solo comprueba la restriccion 3 ya que las primeras dos automaticamente está resuelta
-			suma=0
-			for i in range(self.instancia.Machines):	
-				suma=suma + Y[i][k]
-			if suma>self.instancia.Mmax:
+			if sum(Y[:,k])>self.instancia.Mmax:
 				valido=False
 		return valido	
 
@@ -113,6 +101,35 @@ class soluciones(object):	#clase donde guarda la solucion
 				for j in range(self.instancia.Parts):
 					suma_total=suma_total+int(A[i][j])*Z[j][k]*(1-Y[i][k])
 		return suma_total	
+
+	def crearZ(self,A,Y):
+		Z=np.zeros((self.instancia.Parts,self.instancia.Cells),dtype='int8')
+		for k in range(self.instancia.Cells):
+			for j in range(self.instancia.Parts):
+				Z[j][k]=np.sum(A[np.where(Y[:,k]==1),j])
+		for j in range(self.instancia.Parts):  #establecer seleccion aleatoria cuando existe misma cantidad de elementos
+			aux=np.zeros(self.instancia.Cells)  
+			rep,indice = self.repetido(Z[j])
+			if rep==True:
+				aux[  indice[np.random.randint(0,len(indice))]  ] = 1
+				Z[j]=aux
+			else:
+				aux[np.argmax(Z[j])]=1
+				Z[j]=aux
+		return Z
+
+	def repetido(self,tupla): #genera en caso de haber maximos repetidos, obtener los indices de las cuales se repite
+		maximo=np.max(tupla)
+		index=np.array((),dtype='int16')
+		count=0
+		if maximo>0: #si el numero maximo es superior a 0, entonces cuenta la cantidad
+			for i in range(len(tupla)):
+				if tupla[i]==maximo:
+					count+=1
+					index=np.hstack((index,i))
+		if count >= 2 :
+			return True,index 
+		return False,index
 
 	def  mostrarMatriz(self,A,Y,Z):
 		matriz = np.array((np.copy(A)))
@@ -138,116 +155,120 @@ class metaehuristia(object):   #clase donde realiza las tareas de la metaehurist
 		self.solucion = solucion 	#solucion/es inicales para particulas
 		self.v = self.generarV()	#generar aleatoriamente v
 		p=solucion.S.index(min(self.solucion.S)) # conseguir indice , puntero sol
-		self.Xbest=np.array((np.copy(self.solucion.Y[p]),np.copy(self.solucion.Z[p]),np.copy(self.solucion.S[p])))				#mejor solucion del grupo actual hay q copiar
-		self.Xglobal=np.array((np.copy(self.solucion.Y[p]),np.copy(self.solucion.Z[p]),np.copy(self.solucion.S[p])))			#mejor solucion global 															
+		self.Xbest=np.array((np.copy(self.solucion.Y[p]),np.copy(self.solucion.S[p])))				#mejor solucion del grupo actual hay q copiar
+		self.Xglobal=np.array((np.copy(self.solucion.Y[p]),np.copy(self.solucion.S[p])))			#mejor solucion global 															
+		self.mejorAleatoria=self.Xbest[1]
 		self.algoritmo()
 		
 	def generarV(self): #inicializar velocidad una matriz del mismo tamaño q la mxp
 		obj=[]
 		for i in range (Particulas):
-			obj.append(np.array((np.random.random(self.instancia.Machines),np.random.random(self.instancia.Parts))))
+			obj.append(np.array((np.random.random(self.instancia.Machines))))
 		return np.array(obj)
 		
 	def algoritmo(self): #funcion que realiza las iteraciones de la metaehuristica
+		rangoTheta=100
+		sinTheta=0
 		for p in range (Particulas):  #inicializa partículas 
 			paso=False
+			intentos=0
 			while paso==False:
-				aux1=self.velocidad(self.Xbest[0],self.Xglobal[0],self.v[p][0],self.solucion.Y[p]) #guarda en variable temporal (velocidad)
+				intentos+=1
+				aux1=self.velocidad(self.Xbest[0],self.Xglobal[0],self.v[p],self.solucion.Y[p]) #guarda en variable temporal (velocidad)
 				aux2=self.poscicion(self.solucion.Y[p],aux1,1)									   #guarda en variable temporal (pocicion)
 				Y=self.solucion.transformar(aux2)
+				if intentos>10 and self.solucion.probar_restriccion(Y)==False:
+					theta=np.linspace(0,2*np.pi,rangoTheta)
+					for t in range(rangoTheta):
+						if self.solucion.probar_restriccion(self.solucion.transformar(self.sigmoide(aux2+np.sin(theta[t])))) == True:
+							aux2=self.sigmoide(aux2+np.sin(theta[t]))
+							Y=self.solucion.transformar(aux2)
+							sinTheta=np.sin(theta[t])
+							break
 				if self.solucion.probar_restriccion(Y) == True:    # si es factible la solucion generada, entonces continua asignando las demás variables para generar la solucion
 					paso=True
-					self.v[p][0]=aux1  #guarda en la pocicion, la variable auxiliar 
+					self.v[p]=aux1  #guarda en la pocicion, la variable auxiliar 
 					self.solucion.Y[p]=aux2 #guarda en la pocicion, la variable auxiliar
-					self.v[p][1]=self.velocidad(self.Xbest[1],self.Xglobal[1],self.v[p][1],self.solucion.Z[p])
-					self.solucion.Z[p]=self.poscicion(self.solucion.Z[p],self.v[p][1],1)  #sigZ
-					Z=self.solucion.transformar(self.solucion.Z[p])
+					Z=self.solucion.crearZ(self.instancia.Matrix,Y)
 					self.solucion.S[p]=self.solucion.solucion(self.instancia.Matrix,Y,Z)
-		stdY1,stdZ1 = self.desviacionStandar(self.solucion.Y,self.solucion.Z) #almacena las primeras desviaciones estandar
+		desv1 = self.desviacionStandar(self.solucion.Y) #almacena las primeras desviaciones estandar
 		p=self.solucion.S.index(min(self.solucion.S)) #obtiene la partícula con mejor fitness
-		self.Xbest = (np.copy(self.solucion.Y[p]),np.copy(self.solucion.Z[p]),np.copy(self.solucion.S[p]))
-		if self.Xbest[2] < self.Xglobal[2]: #si la mejor solucion es mejor que la anterior, ésta la actualiza
-			self.Xglobal = (np.copy(self.solucion.Y[p]),np.copy(self.solucion.Z[p]),np.copy(self.solucion.S[p]))
+		self.Xbest = (np.copy(self.solucion.Y[p]),np.copy(self.solucion.S[p]))
+		if self.Xbest[1] < self.Xglobal[1]: #si la mejor solucion es mejor que la anterior, ésta la actualiza
+			self.Xglobal = (np.copy(self.solucion.Y[p]),np.copy(self.solucion.S[p]))
+		primeraIteracion=self.Xglobal[1]
 
-		iteracion=1
-		
-
-
-
-		while iteracion < MaxIteraciones and self.instancia.Bsol<self.Xglobal[2]:  #realiza las iteraciones y se detiene hasta realizar todas o llegar a la solución óptima
+		for it in range(1,MaxIteraciones):
+			if self.Xglobal[1]<=self.instancia.Bsol:                 #utiliza tecnica fordward checking
+				break
 			for p in range (Particulas):
 				paso=False
 				intentos=0                       
 				while paso==False:
 					intentos+=1
-					aux1=self.velocidad(self.Xbest[0],self.Xglobal[0],self.v[p][0],self.solucion.Y[p]) #a
+					aux1=self.velocidad(self.Xbest[0],self.Xglobal[0],self.v[p],self.solucion.Y[p]) #a
 					aux2=self.poscicion(self.solucion.Y[p],aux1,1)
 					Y=self.solucion.transformar(aux2)
 					if intentos>10 and self.solucion.probar_restriccion(Y)==False:
-						lineas=np.linspace(0,2*np.pi,50)
-						#print("\n\n original:\n ",Y)
-						for i in range(50):
-							if self.solucion.probar_restriccion(self.solucion.transformar(self.sigmoide(aux2+np.sin(lineas[i])))) == True:
-								Y=self.solucion.transformar(self.sigmoide(aux2+np.sin(lineas[i])))
+						theta=np.linspace(0,2*np.pi,rangoTheta)
+						for t in range(rangoTheta):
+							if self.solucion.probar_restriccion(self.solucion.transformar(self.sigmoide(aux2+np.sin(theta[t])))) == True:
+								aux2=self.sigmoide(aux2+np.sin(theta[t]))
+								Y=self.solucion.transformar(aux2)
+								sinTheta=np.sin(theta[t])
 								break
 					if self.solucion.probar_restriccion(Y) == True:
 						paso=True
-						self.v[p][0]=aux1
+						self.v[p]=aux1
 						self.solucion.Y[p]=aux2
-						self.v[p][1]=self.velocidad(self.Xbest[1],self.Xglobal[1],self.v[p][1],self.solucion.Z[p])
-						self.solucion.Z[p]=self.poscicion(self.solucion.Z[p],self.v[p][1],1)
-						Z=self.solucion.transformar(self.solucion.Z[p])
+						Z=self.solucion.crearZ(self.instancia.Matrix,Y)
 						self.solucion.S[p]=self.solucion.solucion(self.instancia.Matrix,Y,Z)
 			p=self.solucion.S.index(min(self.solucion.S))
-			self.Xbest = (np.copy(self.solucion.Y[p]),np.copy(self.solucion.Z[p]),np.copy(self.solucion.S[p]))
-			if self.Xbest[2] < self.Xglobal[2]:
-				self.Xglobal = (np.copy(self.solucion.Y[p]),np.copy(self.solucion.Z[p]),np.copy(self.solucion.S[p]))
-		
-
-			if iteracion%10==0:  #por cada 10 iteraciones realiza un mantenimiento para realizar nuevas exploraciones
-				print("Exploracion nuevo espacio")
-				stdY2 ,stdZ2= self.desviacionStandar(self.solucion.Y,self.solucion.Z)  #calcula nueva desviacion estandar
-				listaYt=[] #lista de pociciones de dimencion sobre la condicion dada
-				listaYf=[]
-				listaZt=[]
-				listaZf=[] 
-				for i in range(self.instancia.Machines): #compara las desviaciones estandar de cada dimencion y almacena en una variable la lista de elementos que cumple con la condicion en indicies
-					if stdY2[i]<stdY1[i]:
-						listaYt.append(i) #guarda el indice los elementos que acierta con la condicion
-					else:
-						listaYf.append(i) #guarda el indice de los elementos que no acierta con la condicion
-				for j in range(self.instancia.Parts):
-					if stdZ2[j]<stdZ1[j]:
-						listaZt.append(j)
-					else:
-						listaZf.append(j)		
+			self.Xbest = (np.copy(self.solucion.Y[p]),np.copy(self.solucion.S[p]))
+			if self.Xbest[1] < self.Xglobal[1]:
+				self.Xglobal = (np.copy(self.solucion.Y[p]),np.copy(self.solucion.S[p]))
+			
+			if it%10==0:  #por cada 10 iteraciones realiza un mantenimiento para realizar nuevas exploraciones
+				print("mantenimiento")
+				desv2= self.desviacionStandar(self.solucion.Y)  #calcula nueva desviacion estandar
+				listaYt = np.where(desv2<desv1)          #obtiene indices de las comparaciones de desviacion estandar que son menores que el anterior
+				listaYf = np.where(desv2>desv1)  		#obtiene indices de las comparaciones de desviacion estandar que no cumple con la condicion anterior
 				for p in range (Particulas):
 					estado=False
+					intentos=0
+					auxX=np.zeros(self.instancia.Machines)
 					while estado==False: 
-						aux1=self.velocidad(self.Xbest[0][listaYt],self.Xglobal[0][listaYt],self.v[p][0][listaYt],self.solucion.Y[p][listaYt])  #mismo trabajo que en la iteraciones, pero con diferente trato segun la condicion de las desviaciones estandar
-						aux2=self.solucion.Y[p][listaYt]=self.poscicion(self.solucion.Y[p][listaYt],self.v[p][0][listaYt],np.random.randint(2,6,len(listaYt)))
-						aux3=self.v[p][0][listaYf]=self.velocidad(self.Xbest[0][listaYf],self.Xglobal[0][listaYf],self.v[p][0][listaYf],self.solucion.Y[p][listaYf])
-						aux4=self.solucion.Y[p][listaYf]=self.poscicion(self.solucion.Y[p][listaYf],self.v[p][0][listaYf],1)
-						Y=self.solucion.transformar(self.solucion.Y[p])
+						aux1=self.velocidad(self.Xbest[0][listaYt],self.Xglobal[0][listaYt],self.v[p][listaYt],self.solucion.Y[p][listaYt])  #mismo trabajo que en la iteraciones, pero con diferente trato segun la condicion de las desviaciones estandar
+						aux2=self.poscicion(self.solucion.Y[p][listaYt],self.v[p][listaYt],np.random.randint(2,6,len(listaYt)))
+						aux3=self.velocidad(self.Xbest[0][listaYf],self.Xglobal[0][listaYf],self.v[p][listaYf],self.solucion.Y[p][listaYf])
+						aux4=self.poscicion(self.solucion.Y[p][listaYf],self.v[p][listaYf],1)
+						auxX[listaYt]=aux2
+						auxX[listaYf]=aux4
+						Y=self.solucion.transformar(auxX) #arreglar tomar auxiliares y unirla en su equivalente		
+						if intentos>10 and self.solucion.probar_restriccion(Y) == False:
+							theta=np.linspace(0,2*np.pi,rangoTheta)
+							for t in range(rangoTheta):
+								if self.solucion.probar_restriccion(self.solucion.transformar(self.sigmoide(auxX+np.sin(theta[t])))) == True:
+									auxX=self.sigmoide(auxX+np.sin(theta[t]))
+									Y=self.solucion.transformar(auxX)
+									sinTheta=np.sin(theta[t])
+									break
 						if self.solucion.probar_restriccion(Y) == True:
 							estado=True
-							self.v[p][0][listaYt]=aux1
-							self.solucion.Y[p][listaYt]=aux2
-							self.v[p][0][listaYf]=aux3
-							self.solucion.Y[p][listaYf]=aux4
-					self.v[p][1][listaZt]=self.velocidad(self.Xbest[1][listaZt],self.Xglobal[1][listaZt],self.v[p][1][listaZt],self.solucion.Z[p][listaZt])
-					self.solucion.Z[p][listaZt]=self.poscicion(self.solucion.Z[p][listaZt],self.v[p][1][listaZt],np.random.randint(2,6,len(listaZt)))
-					self.v[p][1][listaZf]=self.velocidad(self.Xbest[1][listaZf],self.Xglobal[1][listaZf],self.v[p][1][listaZf],self.solucion.Z[p][listaZf])
-					self.solucion.Z[p][listaZf]=self.poscicion(self.solucion.Z[p][listaZf],self.v[p][1][listaZf],1)
-				stdY1=stdY2 #actualizar desviacion estandar
-				stdZ1=stdZ2
-			iteracion+=1 #aumenta iteracion
-			print("mejor local: ",self.Xbest[2],"\t mejor global: ",self.Xglobal[2])
-			log.write(str(("mejor local: ",self.Xbest[2],"\t mejor global: ",self.Xglobal[2])))
-		print("iteracion final",iteracion-1)
+							self.solucion.Y[p]=auxX
+							self.v[p][listaYt]=aux1
+							self.v[p][listaYf]=aux3
+				desv1=desv2
+				#ver si trabaja Z	
+			print("mejor local: ",self.Xbest[1],"\t mejor global: ",self.Xglobal[1])
+			#if (self.Xbest[2]==self.instancia.Bsol):
+			#	global solucionOptima 
+			#	solucionOptima+=1
+			#	print("encontre solucion optima")
+		print("mejor solucion aleatoria: ",self.mejorAleatoria,"\t primera iteracion: ",primeraIteracion ,"\t mejor solucion: ",self.Xglobal[1],"\n")
 
 
-
+	#def movimiento(self):
 
 	def velocidad(self,Xbest,Xglobal,v,x): #ecuacion velocidad
 		return a*v+b*np.random.random(len(v))*(Xbest-x) + c*np.random.random(len(v))*(Xglobal-x)
@@ -258,22 +279,11 @@ class metaehuristia(object):   #clase donde realiza las tareas de la metaehurist
 		return temp1  		
 
 
-	def desviacionStandar(self,Y,Z):  #genera desviacion estandar para cada dimension
-		
-		#print(np.array(Y)[:,1])
-
-		auxY=np.flipud(np.rot90(Y)) 
-		auxZ=np.flipud(np.rot90(Z))
-
-		desvY=np.zeros(self.instancia.Machines)
-		desvZ=np.zeros(self.instancia.Parts)
-		
+	def desviacionStandar(self,Y):  #genera desviacion estandar para cada dimension	
+		desvY=np.zeros(self.instancia.Machines) #inicializa listas de desviacion estandar	
 		for i in range(self.instancia.Machines): #guarda desviacion estandar para máquinas x celdas
-			desvY[i]=np.std(auxY[i],ddof=1)
-
-		for j in range(self.instancia.Parts): #guarda desviacion estandar para partes x celdas
-			desvZ[j]=np.std(auxZ[j],ddof=1)		
-		return desvY, desvZ #Devuevle desviacion estandar generada
+			desvY[i]=np.std(np.array(Y)[:,i],ddof=1)
+		return desvY
 
 
 	def sigmoide(self,x):    #se aplica la regla sigmoidal para transformar cualquier número a numeros entre 0 y 111
@@ -285,17 +295,14 @@ class metaehuristia(object):   #clase donde realiza las tareas de la metaehurist
 def main():
 	instancias=listdir("BoctorProblem_90_instancias/")
 	for i in range(len(instancias)):
-		instancia = problema(instancias[i])	#crear instancia a partir del archivo
+		instancia = Instancia(instancias[i])	#crear instancia a partir del archivo
 		objetos=soluciones(instancia)			#generar soluciones en base de la instancia
 		metaehuristia(instancia,objetos) 	#en metaehuristica pasar cuadro y las soluciones
 		
 		
 
-
 if __name__ == '__main__':
 	main()
 
 
-#por qué se cuelga la funcion (me fije por las altos numeros de velocidad y eso afecta la asociacion  de los random) donde llega un momento que realiza pruebas de movimiento y las soluciones dadas ya no da soluciones factibles
 #preguntas al profe, cuando se realiza la funcion de busqueda de mejor solucion cada 10 iteraciones, esta se debe hacer el mantenimiento o hacerlo junto con la busqueda de la iteracion 10
-#a qué se refiere solucion local que aparece en el texto y como se agrega? 
