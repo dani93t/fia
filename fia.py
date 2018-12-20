@@ -12,11 +12,11 @@ a=1			#parámetro a
 b=1					#parámetro b
 c=1					#parámetro c
 theta=0				#parámetro theta
-seed=-1				#parámetro semilla
-k=0.333
+seed=5862				#parámetro semilla
+k=1
 solucionOptima=0
 
-print(k)
+
 if seed>=0:  	#si semilla es positivo, tomara este valor como semilla
 	np.random.seed(seed)
 
@@ -76,7 +76,7 @@ class soluciones(object):	#clase donde guarda la solucion
 			Z=self.crearZ(A,Y)	# Trasnforma las matrices de continua a discreta segun las celdas
 			restriccion=self.probar_restriccion(Y) # llama a verificar factibilidad de la funcion
 		Solucion=self.solucion(A,Y,Z) #resultado FO , fitness
-		return Yuniforme,Z,Solucion	#devuelve las 3 matrices 
+		return Y,Z,Solucion	#devuelve las 3 matrices 
 
 	def transformar(self,matriz):  #funcion que transforma de numeros uniforme a binarios
 		Cells=self.instancia.Cells
@@ -154,18 +154,26 @@ class metaehuristia(object):   #clase donde realiza las tareas de la metaehurist
 		self.instancia = instancia 	#instancia obtenida del txt
 		self.solucion = solucion 	#solucion/es inicales para particulas
 		self.v = self.generarV()	#generar aleatoriamente v
+		self.x = self.generarX()
 		p=solucion.S.index(min(self.solucion.S)) # conseguir indice , puntero sol
-		self.Xbest=np.array((np.copy(self.solucion.Y[p]),np.copy(self.solucion.S[p])))				#mejor solucion del grupo actual hay q copiar
-		self.Xglobal=np.array((np.copy(self.solucion.Y[p]),np.copy(self.solucion.S[p])))			#mejor solucion global 															
+		self.Xbest=np.array((np.copy(self.x[p]),np.copy(self.solucion.S[p])))				#mejor solucion del grupo actual hay q copiar
+		self.Xglobal=np.array((np.copy(self.x[p]),np.copy(self.solucion.S[p])))			#mejor solucion global 															
 		self.mejorAleatoria=self.Xbest[1]
 		self.algoritmo()
-		
+
+
 	def generarV(self): #inicializar velocidad una matriz del mismo tamaño q la mxp
 		obj=[]
 		for i in range (Particulas):
 			obj.append(np.array((np.random.random(self.instancia.Machines))))
 		return np.array(obj)
-		
+	
+	def generarX(self):
+		X=[]
+		for p in range(Particulas):
+			X.append(np.where(self.solucion.Y[p]==1)[1])
+		return np.array(X,dtype='int8')
+
 	def algoritmo(self): #funcion que realiza las iteraciones de la metaehuristica
 		rangoTheta=100
 		sinTheta=0
@@ -174,30 +182,42 @@ class metaehuristia(object):   #clase donde realiza las tareas de la metaehurist
 			intentos=0
 			while paso==False:
 				intentos+=1
-				aux1=self.velocidad(self.Xbest[0],self.Xglobal[0],self.v[p],self.solucion.Y[p]) #guarda en variable temporal (velocidad)
-				aux2=self.poscicion(self.solucion.Y[p],aux1,1)									   #guarda en variable temporal (pocicion)
-				Y=self.solucion.transformar(aux2)
+				aux1=self.velocidad(self.Xbest[0],self.Xglobal[0],self.v[p],self.x[p]) #guarda en variable temporal (velocidad)
+				aux2=self.poscicion(self.x[p],aux1,1)									   #guarda en variable temporal (pocicion)
+				Y=self.binarizar(aux2)
 				if intentos>10 and self.solucion.probar_restriccion(Y)==False:
-					theta=np.linspace(0,2*np.pi,rangoTheta)
-					for t in range(rangoTheta):
-						if self.solucion.probar_restriccion(self.solucion.transformar(self.sigmoide(aux2+np.sin(theta[t])))) == True:
-							aux2=self.sigmoide(aux2+np.sin(theta[t]))
-							Y=self.solucion.transformar(aux2)
-							sinTheta=np.sin(theta[t])
-							break
+					theta=aux2 + np.sin((np.random.random(len(aux2))*2*np.pi))
+					Y=self.binarizar(theta.astype('int8'))
+
+					#for t in range(rangoTheta):
+					#	print(np.sin(theta[t]))
+					#	print(aux2+np.sin(theta[t]))
+					#	print( (3*self.sigmoide(aux2+np.sin(theta[t]))).astype('int8'))
+						#print(self.binarizar((3*self.sigmoide(aux2+np.sin(theta[t]))).astype('int8')))
+						# np.sin((np.random.random()*2*np.pi))
+						
+						#if self.solucion.probar_restriccion(self.solucion.transformar(self.sigmoide(aux2+np.sin(theta[t])))) == True:
+						#	aux2=self.sigmoide(aux2+np.sin(theta[t]))
+						#	Y=self.solucion.transformar(aux2)
+						#	sinTheta=np.sin(theta[t])
+						#	break
+
 				if self.solucion.probar_restriccion(Y) == True:    # si es factible la solucion generada, entonces continua asignando las demás variables para generar la solucion
+					print(intentos)
+					exit()
 					paso=True
 					self.v[p]=aux1  #guarda en la pocicion, la variable auxiliar 
-					self.solucion.Y[p]=aux2 #guarda en la pocicion, la variable auxiliar
+					self.solucion.Y[p]=Y #guarda en la pocicion, la variable auxiliar
 					Z=self.solucion.crearZ(self.instancia.Matrix,Y)
 					self.solucion.S[p]=self.solucion.solucion(self.instancia.Matrix,Y,Z)
-		desv1 = self.desviacionStandar(self.solucion.Y) #almacena las primeras desviaciones estandar
+		desv1 = self.desviacionStandar(self.x) #almacena las primeras desviaciones estandar
 		p=self.solucion.S.index(min(self.solucion.S)) #obtiene la partícula con mejor fitness
-		self.Xbest = (np.copy(self.solucion.Y[p]),np.copy(self.solucion.S[p]))
+		self.Xbest = (np.copy(self.x[p]),np.copy(self.solucion.S[p]))
 		if self.Xbest[1] < self.Xglobal[1]: #si la mejor solucion es mejor que la anterior, ésta la actualiza
-			self.Xglobal = (np.copy(self.solucion.Y[p]),np.copy(self.solucion.S[p]))
+			self.Xglobal = (np.copy(self.x[p]),np.copy(self.solucion.S[p]))
 		primeraIteracion=self.Xglobal[1]
-
+		print("mejor solucion aleatoria: ",self.mejorAleatoria,"\t primera iteracion: ",primeraIteracion)
+		exit()
 		for it in range(1,MaxIteraciones):
 			if self.Xglobal[1]<=self.instancia.Bsol:                 #utiliza tecnica fordward checking
 				break
@@ -206,9 +226,9 @@ class metaehuristia(object):   #clase donde realiza las tareas de la metaehurist
 				intentos=0                       
 				while paso==False:
 					intentos+=1
-					aux1=self.velocidad(self.Xbest[0],self.Xglobal[0],self.v[p],self.solucion.Y[p]) #a
+					aux1=self.velocidad(self.Xbest[0],self.Xglobal[0],self.v[p],self.x[p]) #a
 					aux2=self.poscicion(self.solucion.Y[p],aux1,1)
-					Y=self.solucion.transformar(aux2)
+					Y=self.binarizar(aux2)
 					if intentos>10 and self.solucion.probar_restriccion(Y)==False:
 						theta=np.linspace(0,2*np.pi,rangoTheta)
 						for t in range(rangoTheta):
@@ -272,12 +292,13 @@ class metaehuristia(object):   #clase donde realiza las tareas de la metaehurist
 	#def movimiento(self):
 
 	def velocidad(self,Xbest,Xglobal,v,x): #ecuacion velocidad
-		return a*v+b*np.random.random(len(v))*(Xbest-x) + c*np.random.random(len(v))*(Xglobal-x)
+		return a*v+b*np.random.random(len(v))*(Xbest-x) + c*np.random.random(len(v))*(Xglobal-x) #en caso de emergencia, colocar un v max y v min
 
 	def poscicion(self,x,v1,mult):      # ecuacion pocicion
 		r3=np.random.randint(-1,2,len(x)) #entrega -1 0 1
 		temp1=self.sigmoide(x + mult*r3*self.phi + v1)
-		return temp1  		
+		aux=((temp1*(self.instancia.Cells)).astype('int8'))
+		return aux  		
 
 
 	def desviacionStandar(self,Y):  #genera desviacion estandar para cada dimension	
@@ -290,8 +311,11 @@ class metaehuristia(object):   #clase donde realiza las tareas de la metaehurist
 	def sigmoide(self,x):    #se aplica la regla sigmoidal para transformar cualquier número a numeros entre 0 y 111
 		return (1/(1+np.exp(-x/k)))
 
-
-
+	def binarizar(self,x):
+		Y=np.zeros((self.instancia.Machines,self.instancia.Cells),dtype='int8')
+		for i in range(self.instancia.Machines):
+			Y[i][x[i]]=1
+		return Y
 
 def main():
 	instancias=listdir("BoctorProblem_90_instancias/")
