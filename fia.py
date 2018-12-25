@@ -5,7 +5,7 @@ import random as rd
 from os import listdir
 import numpy as np
 from time import time
-
+import os
 
 MaxIteraciones=100	#número de iteraciones
 Particulas=100		#numero de partículas
@@ -23,7 +23,7 @@ if seed>=0:  	#si semilla es positivo, tomara este valor como semilla
 
 
 log=open("log.csv","w")
-log.write("instancia,nombre_instancia,cantidad_maquinas,cantidad_partes,celdas,mejor_solucion_esperada,resultado_final,intentos,tiempo_de_ejecucion\n")
+log.write("instancia,nombre_instancia,cantidad_maquinas,cantidad_partes,maximo_maquinas,celdas,mejor_solucion_esperada,resultado_final,intentos,tiempo_de_ejecucion\n")
 log.close()
 
 
@@ -293,12 +293,11 @@ def main():
 			final=time()
 			tiempo=final-inicio
 			if inst.Xglobal[1]==instancia.Bsol:
-				texto=i,instancias[i],instancia.Machines,instancia.Parts,instancia.Cells,instancia.Bsol,inst.Xglobal[1],intentos,tiempo
+				texto=i,instancias[i],instancia.Machines,instancia.Parts,instancia.Mmax,instancia.Cells,instancia.Bsol,inst.Xglobal[1],intentos,tiempo
 				log.write(str(texto).replace("(","").replace(")","").replace("'","").replace("array",""))
 				log.write("\n")
 				break
 			intentos+=1
-	print("tuvo un éxito de ",solucionOptima," aciertos de ",len(instancias)," instancias")
 		
 		
 
