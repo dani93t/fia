@@ -245,7 +245,7 @@ class metaehuristia(object):   #clase donde realiza las tareas de la metaehurist
 						aux1=self.velocidad(self.Xbest[0][listaYt],self.Xglobal[0][listaYt],self.v[p][listaYt],self.x[p][listaYt])  #mismo trabajo que en la iteraciones, pero con diferente trato segun la condicion de las desviaciones estandar
 						aux2=self.poscicion(self.x[p][listaYt],aux1,np.random.randint(2,6,len(listaYt)))
 						aux3=self.velocidad(self.Xbest[0][listaYf],self.Xglobal[0][listaYf],self.v[p][listaYf],self.x[p][listaYf])
-						aux4=self.poscicion(self.solucion.Y[p][listaYf],aux3,1)
+						aux4=self.poscicion(self.x[p][listaYf],aux3,1)
 						auxX[listaYt]=aux2
 						auxX[listaYf]=aux4
 						Y=self.solucion.transformar(auxX) #arreglar tomar auxiliares y unirla en su equivalente		
