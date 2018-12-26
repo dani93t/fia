@@ -7,12 +7,12 @@ import numpy as np
 
 
 MaxIteraciones=100	#número de iteraciones
-Particulas=100		#numero de partículas
+Particulas=10		#numero de partículas
 a=1			#parámetro a
 b=1					#parámetro b
 c=1					#parámetro c
 theta=0				#parámetro theta
-seed=5862				#parámetro semilla
+seed=-1				#parámetro semilla
 k=1
 solucionOptima=0
 
@@ -183,74 +183,57 @@ class metaehuristia(object):   #clase donde realiza las tareas de la metaehurist
 			while paso==False:
 				intentos+=1
 				aux1=self.velocidad(self.Xbest[0],self.Xglobal[0],self.v[p],self.x[p]) #guarda en variable temporal (velocidad)
-				aux2=self.poscicion(self.x[p],aux1,1)									   #guarda en variable temporal (pocicion)
+				aux2=self.poscicion(self.x[p],aux1,1)									   #guarda en variable temporal (pocicion) en discreto
 				Y=self.binarizar(aux2)
 				if intentos>10 and self.solucion.probar_restriccion(Y)==False:
 					theta=aux2 + np.sin((np.random.random(len(aux2))*2*np.pi))
 					Y=self.binarizar(theta.astype('int8'))
-
-					#for t in range(rangoTheta):
-					#	print(np.sin(theta[t]))
-					#	print(aux2+np.sin(theta[t]))
-					#	print( (3*self.sigmoide(aux2+np.sin(theta[t]))).astype('int8'))
-						#print(self.binarizar((3*self.sigmoide(aux2+np.sin(theta[t]))).astype('int8')))
-						# np.sin((np.random.random()*2*np.pi))
-						
-						#if self.solucion.probar_restriccion(self.solucion.transformar(self.sigmoide(aux2+np.sin(theta[t])))) == True:
-						#	aux2=self.sigmoide(aux2+np.sin(theta[t]))
-						#	Y=self.solucion.transformar(aux2)
-						#	sinTheta=np.sin(theta[t])
-						#	break
-
 				if self.solucion.probar_restriccion(Y) == True:    # si es factible la solucion generada, entonces continua asignando las demás variables para generar la solucion
-					print(intentos)
-					exit()
 					paso=True
 					self.v[p]=aux1  #guarda en la pocicion, la variable auxiliar 
+					self.x[p]=theta.astype('int8')
 					self.solucion.Y[p]=Y #guarda en la pocicion, la variable auxiliar
-					Z=self.solucion.crearZ(self.instancia.Matrix,Y)
-					self.solucion.S[p]=self.solucion.solucion(self.instancia.Matrix,Y,Z)
+					self.solucion.Z[p]=self.solucion.crearZ(self.instancia.Matrix,self.solucion.Y[p])
+					self.solucion.S[p]=self.solucion.solucion(self.instancia.Matrix,self.solucion.Y[p],self.solucion.Z[p])
 		desv1 = self.desviacionStandar(self.x) #almacena las primeras desviaciones estandar
+		
 		p=self.solucion.S.index(min(self.solucion.S)) #obtiene la partícula con mejor fitness
 		self.Xbest = (np.copy(self.x[p]),np.copy(self.solucion.S[p]))
 		if self.Xbest[1] < self.Xglobal[1]: #si la mejor solucion es mejor que la anterior, ésta la actualiza
 			self.Xglobal = (np.copy(self.x[p]),np.copy(self.solucion.S[p]))
 		primeraIteracion=self.Xglobal[1]
-		print("mejor solucion aleatoria: ",self.mejorAleatoria,"\t primera iteracion: ",primeraIteracion)
-		exit()
+		
 		for it in range(1,MaxIteraciones):
 			if self.Xglobal[1]<=self.instancia.Bsol:                 #utiliza tecnica fordward checking
 				break
 			for p in range (Particulas):
 				paso=False
-				intentos=0                       
+				intentos=0
 				while paso==False:
 					intentos+=1
-					aux1=self.velocidad(self.Xbest[0],self.Xglobal[0],self.v[p],self.x[p]) #a
-					aux2=self.poscicion(self.solucion.Y[p],aux1,1)
+					aux1=self.velocidad(self.Xbest[0],self.Xglobal[0],self.v[p],self.x[p]) #guarda en variable temporal (velocidad)
+					aux2=self.poscicion(self.x[p],aux1,1)									   #guarda en variable temporal (pocicion)
 					Y=self.binarizar(aux2)
 					if intentos>10 and self.solucion.probar_restriccion(Y)==False:
-						theta=np.linspace(0,2*np.pi,rangoTheta)
-						for t in range(rangoTheta):
-							if self.solucion.probar_restriccion(self.solucion.transformar(self.sigmoide(aux2+np.sin(theta[t])))) == True:
-								aux2=self.sigmoide(aux2+np.sin(theta[t]))
-								Y=self.solucion.transformar(aux2)
-								sinTheta=np.sin(theta[t])
-								break
-					if self.solucion.probar_restriccion(Y) == True:
+						theta=aux2 + np.sin((np.random.random(len(aux2))*2*np.pi))
+						Y=self.binarizar(theta.astype('int8'))
+					if self.solucion.probar_restriccion(Y) == True:    # si es factible la solucion generada, entonces continua asignando las demás variables para generar la solucion
 						paso=True
-						self.v[p]=aux1
-						self.solucion.Y[p]=aux2
-						Z=self.solucion.crearZ(self.instancia.Matrix,Y)
-						self.solucion.S[p]=self.solucion.solucion(self.instancia.Matrix,Y,Z)
-			p=self.solucion.S.index(min(self.solucion.S))
-			self.Xbest = (np.copy(self.solucion.Y[p]),np.copy(self.solucion.S[p]))
-			if self.Xbest[1] < self.Xglobal[1]:
-				self.Xglobal = (np.copy(self.solucion.Y[p]),np.copy(self.solucion.S[p]))
+						self.v[p]=aux1  #guarda en la pocicion, la variable auxiliar 
+						self.x[p]=theta
+						self.solucion.Y[p]=Y #guarda en la pocicion, la variable auxiliar
+						self.solucion.Z[p]=self.solucion.crearZ(self.instancia.Matrix,self.solucion.Y[p])
+						self.solucion.S[p]=self.solucion.solucion(self.instancia.Matrix,self.solucion.Y[p],self.solucion.Z[p])
+			p=self.solucion.S.index(min(self.solucion.S)) #obtiene la partícula con mejor fitness
+			self.Xbest = (np.copy(self.x[p]),np.copy(self.solucion.S[p]))
+			if self.Xbest[1] < self.Xglobal[1]: #si la mejor solucion es mejor que la anterior, ésta la actualiza
+				self.Xglobal = (np.copy(self.x[p]),np.copy(self.solucion.S[p]))
+	
 			
+
 			if it%10==0:  #por cada 10 iteraciones realiza un mantenimiento para realizar nuevas exploraciones
 				print("mantenimiento")
-				desv2= self.desviacionStandar(self.solucion.Y)  #calcula nueva desviacion estandar
+				desv2= self.desviacionStandar(self.x)  #calcula nueva desviacion estandar
 				listaYt = np.where(desv2<desv1)          #obtiene indices de las comparaciones de desviacion estandar que son menores que el anterior
 				listaYf = np.where(desv2>desv1)  		#obtiene indices de las comparaciones de desviacion estandar que no cumple con la condicion anterior
 				for p in range (Particulas):
@@ -259,10 +242,10 @@ class metaehuristia(object):   #clase donde realiza las tareas de la metaehurist
 					auxX=np.zeros(self.instancia.Machines)
 					while estado==False:
 						intentos+=1 
-						aux1=self.velocidad(self.Xbest[0][listaYt],self.Xglobal[0][listaYt],self.v[p][listaYt],self.solucion.Y[p][listaYt])  #mismo trabajo que en la iteraciones, pero con diferente trato segun la condicion de las desviaciones estandar
-						aux2=self.poscicion(self.solucion.Y[p][listaYt],self.v[p][listaYt],np.random.randint(2,6,len(listaYt)))
-						aux3=self.velocidad(self.Xbest[0][listaYf],self.Xglobal[0][listaYf],self.v[p][listaYf],self.solucion.Y[p][listaYf])
-						aux4=self.poscicion(self.solucion.Y[p][listaYf],self.v[p][listaYf],1)
+						aux1=self.velocidad(self.Xbest[0][listaYt],self.Xglobal[0][listaYt],self.v[p][listaYt],self.x[p][listaYt])  #mismo trabajo que en la iteraciones, pero con diferente trato segun la condicion de las desviaciones estandar
+						aux2=self.poscicion(self.x[p][listaYt],aux1,np.random.randint(2,6,len(listaYt)))
+						aux3=self.velocidad(self.Xbest[0][listaYf],self.Xglobal[0][listaYf],self.v[p][listaYf],self.x[p][listaYf])
+						aux4=self.poscicion(self.solucion.Y[p][listaYf],aux3,1)
 						auxX[listaYt]=aux2
 						auxX[listaYf]=aux4
 						Y=self.solucion.transformar(auxX) #arreglar tomar auxiliares y unirla en su equivalente		
@@ -297,7 +280,7 @@ class metaehuristia(object):   #clase donde realiza las tareas de la metaehurist
 	def poscicion(self,x,v1,mult):      # ecuacion pocicion
 		r3=np.random.randint(-1,2,len(x)) #entrega -1 0 1
 		temp1=self.sigmoide(x + mult*r3*self.phi + v1)
-		aux=((temp1*(self.instancia.Cells)).astype('int8'))
+		aux=((temp1*(self.instancia.Cells)).astype('int8')) #discretiza la pocicion como entero
 		return aux  		
 
 
