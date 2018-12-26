@@ -207,7 +207,6 @@ class metaehuristia(object):   #clase donde realiza las tareas de la metaehurist
 					aux1=self.velocidad(self.Xbest[0],self.Xglobal[0],self.v[p],self.solucion.Y[p]) #a
 					aux2=self.poscicion(self.solucion.Y[p],aux1,1)
 					Y=self.solucion.transformar(aux2)
-					
 					if intentos>10 and self.solucion.probar_restriccion(Y)==False:
 						aux2=self.sigmoide(aux2 + np.sin((np.random.random(len(aux2))*2*np.pi)))
 						Y=self.solucion.transformar(aux2)
@@ -241,11 +240,9 @@ class metaehuristia(object):   #clase donde realiza las tareas de la metaehurist
 						auxX[listaYt]=aux2
 						auxX[listaYf]=aux4
 						Y=self.solucion.transformar(auxX) #arreglar tomar auxiliares y unirla en su equivalente		
-					
 						if intentos>10 and self.solucion.probar_restriccion(Y)==False:
 							auxX=self.sigmoide(auxX + np.sin((np.random.random(len(auxX))*2*np.pi)))
 							Y=self.solucion.transformar(auxX)
-
 						if self.solucion.probar_restriccion(Y) == True:
 							estado=True
 							self.solucion.Y[p]=auxX
@@ -284,6 +281,7 @@ def main():
 	instancias=listdir("BoctorProblem_90_instancias/")
 	log=open("log.csv","a")
 	for i in range(len(instancias)):
+		print("instancia ",(i+1))
 		intentos=1
 		while True:
 			inicio=time()
@@ -298,7 +296,6 @@ def main():
 				log.write("\n")
 				break
 			intentos+=1
-	os.system('shutdown /s /f /t 0')
 		
 		
 
