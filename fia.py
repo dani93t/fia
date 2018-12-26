@@ -7,12 +7,12 @@ import numpy as np
 
 
 MaxIteraciones=100	#número de iteraciones
-Particulas=10		#numero de partículas
+Particulas=100		#numero de partículas
 a=1			#parámetro a
 b=1					#parámetro b
 c=1					#parámetro c
 theta=0				#parámetro theta
-seed=-1				#parámetro semilla
+seed=52562				#parámetro semilla
 k=1
 solucionOptima=0
 
@@ -217,6 +217,8 @@ class metaehuristia(object):   #clase donde realiza las tareas de la metaehurist
 					if intentos>10 and self.solucion.probar_restriccion(Y)==False:
 						theta=aux2 + np.sin((np.random.random(len(aux2))*2*np.pi))
 						Y=self.binarizar(theta.astype('int8'))
+						if it==11 and p==82:
+							print(Y)
 					if self.solucion.probar_restriccion(Y) == True:    # si es factible la solucion generada, entonces continua asignando las demás variables para generar la solucion
 						paso=True
 						self.v[p]=aux1  #guarda en la pocicion, la variable auxiliar 
@@ -236,10 +238,11 @@ class metaehuristia(object):   #clase donde realiza las tareas de la metaehurist
 				desv2= self.desviacionStandar(self.x)  #calcula nueva desviacion estandar
 				listaYt = np.where(desv2<desv1)          #obtiene indices de las comparaciones de desviacion estandar que son menores que el anterior
 				listaYf = np.where(desv2>desv1)  		#obtiene indices de las comparaciones de desviacion estandar que no cumple con la condicion anterior
+
 				for p in range (Particulas):
 					estado=False
 					intentos=0
-					auxX=np.zeros(self.instancia.Machines)
+					auxX=np.zeros(self.instancia.Machines,dtype='int8')
 					while estado==False:
 						intentos+=1 
 						aux1=self.velocidad(self.Xbest[0][listaYt],self.Xglobal[0][listaYt],self.v[p][listaYt],self.x[p][listaYt])  #mismo trabajo que en la iteraciones, pero con diferente trato segun la condicion de las desviaciones estandar
@@ -248,29 +251,22 @@ class metaehuristia(object):   #clase donde realiza las tareas de la metaehurist
 						aux4=self.poscicion(self.x[p][listaYf],aux3,1)
 						auxX[listaYt]=aux2
 						auxX[listaYf]=aux4
-						Y=self.solucion.transformar(auxX) #arreglar tomar auxiliares y unirla en su equivalente		
+						Y=self.binarizar(auxX.astype('int8')) #arreglar tomar auxiliares y unirla en su equivalente		
 						if intentos>10 and self.solucion.probar_restriccion(Y) == False:
-							theta=np.linspace(0,2*np.pi,rangoTheta)
-							for t in range(rangoTheta):
-								#print(self.solucion.transformar(self.sigmoide(auxX+np.sin(theta[t]))))
-								if self.solucion.probar_restriccion(self.solucion.transformar(self.sigmoide(auxX+np.sin(theta[t])))) == True:
-									auxX=self.sigmoide(auxX+np.sin(theta[t]))
-									Y=self.solucion.transformar(auxX)
-									sinTheta=np.sin(theta[t])
-									break
+							theta=auxX + np.sin((np.random.random(len(auxX))*2*np.pi))
+							Y=self.binarizar(theta.astype('int8'))
 						if self.solucion.probar_restriccion(Y) == True:
 							estado=True
-							self.solucion.Y[p]=auxX
+							self.solucion.Y[p]=Y #guarda en la pocicion, la variable auxiliar
+							self.solucion.Z[p]=self.solucion.crearZ(self.instancia.Matrix,self.solucion.Y[p])
+							self.solucion.S[p]=self.solucion.solucion(self.instancia.Matrix,self.solucion.Y[p],self.solucion.Z[p])
 							self.v[p][listaYt]=aux1
 							self.v[p][listaYf]=aux3
+							self.x[p]=theta
 				desv1=desv2	
 			print("mejor local: ",self.Xbest[1],"\t mejor global: ",self.Xglobal[1])
-			#if (self.Xbest[2]==self.instancia.Bsol):
-			#	global solucionOptima 
-			#	solucionOptima+=1
-			#	print("encontre solucion optima")
 		print("mejor solucion aleatoria: ",self.mejorAleatoria,"\t primera iteracion: ",primeraIteracion ,"\t mejor solucion: ",self.Xglobal[1],"\n")
-
+		exit()
 
 	#def movimiento(self):
 
