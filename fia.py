@@ -224,7 +224,7 @@ class metaehuristia(object):   #clase donde realiza las tareas de la metaehurist
 				self.Xglobal = (np.copy(self.solucion.Y[p]),np.copy(self.solucion.S[p]))
 			
 			if it%10==0:  #por cada 10 iteraciones realiza un mantenimiento para realizar nuevas exploraciones
-				#print("mantenimiento")
+				print("mantenimiento")
 				desv2= self.desviacionStandar(self.solucion.Y)  #calcula nueva desviacion estandar
 				listaYt = np.where(desv2<desv1)          #obtiene indices de las comparaciones de desviacion estandar que son menores que el anterior
 				listaYf = np.where(desv2>desv1)  		#obtiene indices de las comparaciones de desviacion estandar que no cumple con la condicion anterior
@@ -235,9 +235,9 @@ class metaehuristia(object):   #clase donde realiza las tareas de la metaehurist
 					while estado==False:
 						intentos+=1 
 						aux1=self.velocidad(self.Xbest[0][listaYt],self.Xglobal[0][listaYt],self.v[p][listaYt],self.solucion.Y[p][listaYt])  #mismo trabajo que en la iteraciones, pero con diferente trato segun la condicion de las desviaciones estandar
-						aux2=self.poscicion(self.solucion.Y[p][listaYt],self.v[p][listaYt],np.random.randint(2,6,len(listaYt)))
+						aux2=self.poscicion(self.solucion.Y[p][listaYt],aux1,np.random.randint(2,6,len(listaYt)))
 						aux3=self.velocidad(self.Xbest[0][listaYf],self.Xglobal[0][listaYf],self.v[p][listaYf],self.solucion.Y[p][listaYf])
-						aux4=self.poscicion(self.solucion.Y[p][listaYf],self.v[p][listaYf],1)
+						aux4=self.poscicion(self.solucion.Y[p][listaYf],aux3,1)
 						auxX[listaYt]=aux2
 						auxX[listaYf]=aux4
 						Y=self.solucion.transformar(auxX) #arreglar tomar auxiliares y unirla en su equivalente		
@@ -252,7 +252,7 @@ class metaehuristia(object):   #clase donde realiza las tareas de la metaehurist
 							self.v[p][listaYt]=aux1
 							self.v[p][listaYf]=aux3
 				desv1=desv2	
-			#print("mejor local: ",self.Xbest[1],"\t mejor global: ",self.Xglobal[1])
+			print("mejor local: ",self.Xbest[1],"\t mejor global: ",self.Xglobal[1])
 		print("mejor solucion aleatoria: ",self.mejorAleatoria,"\t primera iteracion: ",primeraIteracion ,"\t mejor solucion: ",self.Xglobal[1],"\n")
 
 
@@ -298,6 +298,7 @@ def main():
 				log.write("\n")
 				break
 			intentos+=1
+	os.system('shutdown /s /f /t 0')
 		
 		
 
