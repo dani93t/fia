@@ -8,7 +8,7 @@ from time import time
 import os
 
 MaxIteraciones=100	#número de iteraciones
-Particulas=100		#numero de partículas
+Particulas=50		#numero de partículas
 a=1			#parámetro a
 b=1					#parámetro b
 c=1					#parámetro c
@@ -116,7 +116,7 @@ class soluciones(object):	#clase donde guarda la solucion
 			aux=np.zeros(self.instancia.Cells)  
 			rep,indice = self.repetido(Z[j])
 			if rep==True:
-				aux[  indice[np.random.randint(0,len(indice))]  ] = 1
+				aux[  indice[np.random.randint(0,len(indice))]] = 1
 				Z[j]=aux
 			else:
 				aux[np.argmax(Z[j])]=1
@@ -163,11 +163,11 @@ class metaehuristia(object):   #clase donde realiza las tareas de la metaehurist
 		self.Xglobal=np.array((np.copy(self.solucion.Y[p]),np.copy(self.solucion.S[p])))			#mejor solucion global 															
 		self.mejorAleatoria=self.Xbest[1]
 		self.algoritmo()
-		
+
 	def generarV(self): #inicializar velocidad una matriz del mismo tamaño q la mxp
 		obj=[]
 		for i in range (Particulas):
-			obj.append(np.array((np.random.random(self.instancia.Machines))))
+			obj.append(np.array(( 2*np.random.random(self.instancia.Machines)-1)))
 		return np.array(obj)
 		
 	def algoritmo(self): #funcion que realiza las iteraciones de la metaehuristica
@@ -180,9 +180,12 @@ class metaehuristia(object):   #clase donde realiza las tareas de la metaehurist
 				intentos+=1
 				aux1=self.velocidad(self.Xbest[0],self.Xglobal[0],self.v[p],self.solucion.Y[p]) #guarda en variable temporal (velocidad)
 				aux2=self.poscicion(self.solucion.Y[p],aux1,1)									   #guarda en variable temporal (pocicion)
+				aux2[np.where(aux2 == 1)]=0.9
 				Y=self.solucion.transformar(aux2)
 				if intentos>10 and self.solucion.probar_restriccion(Y)==False:
-					aux2=self.sigmoide(aux2 + np.sin((np.random.random(len(aux2))*2*np.pi)))
+					aux2=aux2 + np.sin((np.random.random(len(aux2))*2*np.pi))
+					aux2[np.where(aux2<0)]=0.1
+					aux2[np.where(aux2>1)]=0.9
 					Y=self.solucion.transformar(aux2)
 				if self.solucion.probar_restriccion(Y) == True:    # si es factible la solucion generada, entonces continua asignando las demás variables para generar la solucion
 					paso=True
@@ -206,11 +209,18 @@ class metaehuristia(object):   #clase donde realiza las tareas de la metaehurist
 					intentos+=1
 					aux1=self.velocidad(self.Xbest[0],self.Xglobal[0],self.v[p],self.solucion.Y[p]) #a
 					aux2=self.poscicion(self.solucion.Y[p],aux1,1)
+					
+					aux2[np.where(aux2 == 1)]=0.9
+					
+
 					Y=self.solucion.transformar(aux2)
 					if intentos>10 and self.solucion.probar_restriccion(Y)==False:
-						aux2=self.sigmoide(aux2 + np.sin((np.random.random(len(aux2))*2*np.pi)))
-						Y=self.solucion.transformar(aux2)
+						aux2=aux2 + np.sin((np.random.random(len(aux2))*2*np.pi))
+						
+						aux2[np.where(aux2<0)]=0.1
+						aux2[np.where(aux2>1)]=0.9
 
+						Y=self.solucion.transformar(aux2)
 					if self.solucion.probar_restriccion(Y) == True:
 						paso=True
 						self.v[p]=aux1
@@ -223,7 +233,7 @@ class metaehuristia(object):   #clase donde realiza las tareas de la metaehurist
 				self.Xglobal = (np.copy(self.solucion.Y[p]),np.copy(self.solucion.S[p]))
 			
 			if it%10==0:  #por cada 10 iteraciones realiza un mantenimiento para realizar nuevas exploraciones
-				print("mantenimiento")
+				#print("mantenimiento")
 				desv2= self.desviacionStandar(self.solucion.Y)  #calcula nueva desviacion estandar
 				listaYt = np.where(desv2<desv1)          #obtiene indices de las comparaciones de desviacion estandar que son menores que el anterior
 				listaYf = np.where(desv2>desv1)  		#obtiene indices de las comparaciones de desviacion estandar que no cumple con la condicion anterior
@@ -239,9 +249,12 @@ class metaehuristia(object):   #clase donde realiza las tareas de la metaehurist
 						aux4=self.poscicion(self.solucion.Y[p][listaYf],aux3,1)
 						auxX[listaYt]=aux2
 						auxX[listaYf]=aux4
+						auxX[np.where(auxX==1)]=0.9
 						Y=self.solucion.transformar(auxX) #arreglar tomar auxiliares y unirla en su equivalente		
 						if intentos>10 and self.solucion.probar_restriccion(Y)==False:
-							auxX=self.sigmoide(auxX + np.sin((np.random.random(len(auxX))*2*np.pi)))
+							auxX=auxX + np.sin((np.random.random(len(auxX))*2*np.pi))
+							auxX[np.where(auxX>=1)]=0.9
+							auxX[np.where(auxX<=0)]=0.1
 							Y=self.solucion.transformar(auxX)
 						if self.solucion.probar_restriccion(Y) == True:
 							estado=True
@@ -249,8 +262,8 @@ class metaehuristia(object):   #clase donde realiza las tareas de la metaehurist
 							self.v[p][listaYt]=aux1
 							self.v[p][listaYf]=aux3
 				desv1=desv2	
-			print("mejor local: ",self.Xbest[1],"\t mejor global: ",self.Xglobal[1])
-		print("mejor solucion aleatoria: ",self.mejorAleatoria,"\t primera iteracion: ",primeraIteracion ,"\t mejor solucion: ",self.Xglobal[1],"\n")
+			#print("mejor local: ",self.Xbest[1],"\t mejor global: ",self.Xglobal[1])
+		#print("mejor solucion aleatoria: ",self.mejorAleatoria,"\t primera iteracion: ",primeraIteracion ,"\t mejor solucion: ",self.Xglobal[1],"\n")
 
 
 
@@ -261,7 +274,7 @@ class metaehuristia(object):   #clase donde realiza las tareas de la metaehurist
 	def poscicion(self,x,v1,mult):      # ecuacion pocicion
 		r3=np.random.randint(-1,2,len(x)) #entrega -1 0 1
 		temp1=self.sigmoide(x + mult*r3*self.phi + v1)
-		return temp1  		
+		return temp1
 
 
 	def desviacionStandar(self,Y):  #genera desviacion estandar para cada dimension	
@@ -280,22 +293,27 @@ class metaehuristia(object):   #clase donde realiza las tareas de la metaehurist
 def main():
 	instancias=listdir("BoctorProblem_90_instancias/")
 	log=open("log.csv","a")
+	contador_optimo=0
 	for i in range(len(instancias)):
 		print("instancia ",(i+1))
-		intentos=1
-		while True:
-			inicio=time()
-			instancia = Instancia(instancias[i])	#crear instancia a partir del archivo
-			objetos=soluciones(instancia)			#generar soluciones en base de la instancia
-			inst=metaehuristia(instancia,objetos) 	#en metaehuristica pasar cuadro y las soluciones
-			final=time()
-			tiempo=final-inicio
-			if inst.Xglobal[1]==instancia.Bsol:
-				texto=i,instancias[i],instancia.Machines,instancia.Parts,instancia.Mmax,instancia.Cells,instancia.Bsol,inst.Xglobal[1],intentos,tiempo
-				log.write(str(texto).replace("(","").replace(")","").replace("'","").replace("array",""))
-				log.write("\n")
-				break
-			intentos+=1
+		#intentos=1
+		#while True:
+		inicio=time()
+		instancia = Instancia("MCDP_Boctor_Problem09_C3_M7.txt")	#crear instancia a partir del archivo
+		objetos=soluciones(instancia)			#generar soluciones en base de la instancia
+		inst=metaehuristia(instancia,objetos) 	#en metaehuristica pasar cuadro y las soluciones
+		final=time()
+		#tiempo=final-inicio
+		print("solucion final:", inst.Xglobal[1])
+		if inst.Xglobal[1]==instancia.Bsol:
+			contador_optimo+=1	
+				#texto=i,instancias[i],instancia.Machines,instancia.Parts,instancia.Mmax,instancia.Cells,instancia.Bsol,inst.Xglobal[1],intentos,tiempo
+				#log.write(str(texto).replace("(","").replace(")","").replace("'","").replace("array",""))
+				#log.write("\n")
+		else:
+			print("no se encontro optimo")
+	print("porcentaje de optimos: ",100*(contador_optimo/90),'%')
+		#intentos+=1
 		
 		
 
@@ -304,3 +322,5 @@ if __name__ == '__main__':
 
 
 #preguntas al profe, cuando se realiza la funcion de busqueda de mejor solucion cada 10 iteraciones, esta se debe hacer el mantenimiento o hacerlo junto con la busqueda de la iteracion 10
+#7.9228163e+28	#1.8530202e+15 	3 celdas
+#1.8446744e+19	#4294967296		2 celdas
