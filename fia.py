@@ -17,14 +17,9 @@ seed=-1				#parámetro semilla
 k=1
 solucionOptima=0
 
-print(k)
 if seed>=0:  	#si semilla es positivo, tomara este valor como semilla
 	np.random.seed(seed)
 
-
-log=open("log.csv","w")
-log.write("instancia,nombre_instancia,cantidad_maquinas,cantidad_partes,maximo_maquinas,celdas,mejor_solucion_esperada,resultado_final,intentos,tiempo_de_ejecucion\n")
-log.close()
 
 
 class Instancia(object):
@@ -263,7 +258,7 @@ class metaehuristia(object):   #clase donde realiza las tareas de la metaehurist
 							self.v[p][listaYf]=aux3
 				desv1=desv2	
 			#print("mejor local: ",self.Xbest[1],"\t mejor global: ",self.Xglobal[1])
-		#print("mejor solucion aleatoria: ",self.mejorAleatoria,"\t primera iteracion: ",primeraIteracion ,"\t mejor solucion: ",self.Xglobal[1],"\n")
+		print("mejor solucion aleatoria: ",self.mejorAleatoria,"\t primera iteracion: ",primeraIteracion ,"\t mejor solucion: ",self.Xglobal[1],"\n")
 
 
 
@@ -292,28 +287,21 @@ class metaehuristia(object):   #clase donde realiza las tareas de la metaehurist
 
 def main():
 	instancias=listdir("BoctorProblem_90_instancias/")
-	log=open("log.csv","a")
 	contador_optimo=0
 	for i in range(len(instancias)):
 		print("instancia ",(i+1))
-		#intentos=1
-		#while True:
 		inicio=time()
-		instancia = Instancia("MCDP_Boctor_Problem09_C3_M7.txt")	#crear instancia a partir del archivo
+		instancia = Instancia(instancias[i])	#crear instancia a partir del archivo
 		objetos=soluciones(instancia)			#generar soluciones en base de la instancia
 		inst=metaehuristia(instancia,objetos) 	#en metaehuristica pasar cuadro y las soluciones
 		final=time()
-		#tiempo=final-inicio
+		tiempo=final-inicio
 		print("solucion final:", inst.Xglobal[1])
 		if inst.Xglobal[1]==instancia.Bsol:
 			contador_optimo+=1	
-				#texto=i,instancias[i],instancia.Machines,instancia.Parts,instancia.Mmax,instancia.Cells,instancia.Bsol,inst.Xglobal[1],intentos,tiempo
-				#log.write(str(texto).replace("(","").replace(")","").replace("'","").replace("array",""))
-				#log.write("\n")
 		else:
 			print("no se encontro optimo")
 	print("porcentaje de optimos: ",100*(contador_optimo/90),'%')
-		#intentos+=1
 		
 		
 
